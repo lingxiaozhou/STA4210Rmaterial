@@ -1,0 +1,96 @@
+---
+title: "Rexample1"
+author: "Lingxiao Zhou"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+
+# Copier example
+
+Let X be the number of copiers serviced and Y be the time spent (in
+minutes) by the technician for a known manufacturer.
+
+
+```{r}
+copier <- read.csv("https://raw.githubusercontent.com/lingxiaozhou/STA4210Rmaterial/main/data/copiers.csv",skip=1,header=TRUE)
+
+head(copier)  # print the first six rows of the dataframe
+nrow(copier)  # check the sample size
+```
+
+
+
+
+
+
+
+
+```{r fig.height=3.5, fig.width=7}
+# Scatterplot
+plot(copier$Copiers,copier$Time,pch=16,xlab="Quantity",ylab="Time (in minutes)",main="Scatterplot")
+
+
+# Fit the model
+reg <- lm(Time~Copiers,data=copier)
+summary(reg)  # get the summary of the model
+abline(reg)   # add the fitted line to the scatterplot
+```
+
+
+
+The estimated equation is
+$$\hat Y = -0.5802 + 15.0352X,\ \mathrm{for}\  X \in \mathrm{approximately}\   [0, 10]$$
+
+Recall that for simple linear regression model, we have
+$$Y_i = \beta_0+\beta_1X_i+\epsilon_i,\hspace{1cm}\epsilon_i\sim N(0,\sigma^2),$$ which implies
+$$E[Y_i] = \beta_0+\beta_1X_i$$
+
+* We note that the slope $b_1 = 15.0352$ implies that for each unit
+increase in copier quantity, the mean service time increases by 15.0352
+minutes (for quantity values between 1 and 10).
+* The estimated $\sigma$ is s = 8.914 from the output.
+* If we wish to estimate the expected time needed for a service call for 5 copiers
+that would be $-0.5802 + 15.0352(5) = 74.5958 \  \mathrm{minutes}.$
+
+```{r}
+predict(reg,newdata=data.frame(Copiers=5))
+```
+
+```{r fig.height=3, fig.width=5}
+# print the residuals
+cat("first 5 residuals:", reg$residuals[1:5],"\n")
+plot(reg$residuals,main = "",ylab = "residual")
+```
+
+* The first residual implies that the actual observed time was `r abs(round(reg$residuals[1],4))` minutes smaller than the model estimates.
+* Residual magnitude in minute may not be easy to interpret whether large or small in the context of the problem.
+* standardized residual can be used to compare the residuals from different models: $\frac{e_i}{\mathrm{sd}(e_i)}$
+    - standardized residuals are centered and scaled to make it easier to interpret residuals from different models.
+    - An observation with a standardized residual that is larger than 3 (in absolute value) is considered big.
+
+```{r}
+cat("first 5 standardized residuals:",rstandard(reg)[1:5])
+```
+
+
+
+```{r}
+copier$Time <- copier$Time/60               # convert the unit of time to hours
+```
+
+
+```{r}
+# refit the model
+reg2 <- lm(Time~Copiers,data=copier)   
+
+# print the residuals
+cat("first 5 residuals:", reg2$residuals[1:5],"\n")
+cat("first 5 standardized residuals:",rstandard(reg2)[1:5])
+```
+
+
+

@@ -1,0 +1,181 @@
+---
+title: "Rexample3"
+author: "Lingxiao Zhou"
+date: "2024-09-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+
+
+
+## Example for ANOVA (toluca)
+
+Data on lot size ($x$) and work hours ($y$) was obtained from 25 recent runs of a manufacturing process.
+
+```{r fig.height=3.5, fig.width=5}
+# find relationship between lot size (X) and work hours (Y) 
+toluca=read.table("http://www.stat.ufl.edu/~rrandles/sta4210/Rclassnotes/data/textdatasets/KutnerData/Chapter%20%201%20Data%20Sets/CH01TA01.txt",
+                  col.names = c("lotsize", "workhrs"))
+plot(toluca$lotsize,toluca$workhrs, xlab = "lot size",ylab = "work hours")
+toluca.reg=lm(workhrs~lotsize,data=toluca)
+abline(toluca.reg)
+```
+
+```{r}
+anova(toluca.reg)
+summary(toluca.reg)
+```
+
+
+
+**Reduce Model:** $Y_i = \beta_0$  
+**Full Model:** $Y_i = \beta_0+\beta_1x_i$
+
+```{r}
+Red <- lm(workhrs~1,data=toluca)
+Full <- toluca.reg
+
+anova(Red,Full)
+```
+
+
+# Diagnostic on Predictor
+
+**Goal**: Identify any outlying values in predictor, $x$ that could affect the appropriateness of the linear model.
+
+**Two main issues**
+
+* Outliers (Histogram and/or Boxplot)
+* Levels of predictor associated with the run order when experiment is run sequentially (Sequence/ Time Series Plot)
+
+```{r}
+par(mfrow = c(1,2))
+hist(toluca$lotsize,xlab = "lot size",main = "Histogram")
+boxplot(toluca$lotsize)
+```
+
+* Do not appear to be any outliers
+
+
+```{r fig.height=3.5, fig.width=5}
+plot(toluca$lotsize,type = "b",xlab = "Run order", ylab = "Lot size", main = "Sequence Plot")
+```
+
+* No discernible pattern/depenency of the values and run order.
+
+
+
+
+
+# Checking Model Assumptions Graphically
+
+Inference are only valid if the model assumptions are valid.
+$$Y_i = \beta_0+\beta_1x_i+\epsilon_i,\hspace{1cm}i=1,\dots,n,$$ where $\epsilon_i\stackrel{iid}{\sim}N(0,\sigma)$ for $i = 1,\dots,n.$
+
+* Normality: The errors are normally distributed
+* Independence: The errors are independent of each other.
+* Homogeneity of Variance: The variance of the residuals is the same for all values of X.
+* Linearity: The relationship between the independent variable ($x$) and the mean of the dependent variable ($Y$) is linear.
+
+
+# Residuals
+
+* Assumptions can be checked with residuals $e_i: = y_i-\hat y_i$, or better yet, the standardized/studentized residuals
+* Standardized residuals have mean 0 and standard deviation of 1
+* Studentized residuals are standardized residuals that use the leave-one-out approach. The $i-$th observation is omitted when fitting thr model is then used to predict (without bias) the response for the $i-$th observation. More on this later
+* In R, use `rstandard()` and `rstudent()` function to obtain the standardized and studentized residual.
+
+# Normality
+
+## Empirical CDF
+
+**Def**: CDF associated with the smpirical measuare of the sample. Assigns equal probability $1/n$ to each point and is a step function
+$$\hat F_n(x) = \frac{\mathrm{number\  of\  elements}\le x}{n} = \frac{1}{n}\sum_{i=1}^n I\{x_i\le x\}$$
+where $I(\cdot)$ is the indicator function.
+
+**Example:** consider the sample $1,3,7,8$
+$$
+\hat F_4(x) = 
+\begin{cases}
+0 &\mathrm{if\  } x<1\\
+0.25 &\mathrm{if\  } 1\le x<3\\
+0.5 &\mathrm{if\  } 3\le x<7\\
+0.75 &\mathrm{if\  } 7\le x<8\\
+1 &\mathrm{if\  } x\ge 8
+\end{cases}
+$$
+```{r fig.height=3.5, fig.width=5}
+sample_data <- c(1,3,7,8)
+edf <- ecdf(sample_data)
+
+# Plot the empirical distribution function
+plot(edf, main = "Empirical CDF",
+     xlab = "x", ylab = "F(x)",
+     verticals = FALSE, do.points = FALSE)
+```
+
+* The more data points the smaller the jumps and the step function begins to look like an "S" curve
+
+**Example:** Generate 100 observations from a N(5,2) and plot the empirical CDF and overlay the theoretical CDF from N(5,2)
+
+```{r fig.height=3.5, fig.width=5}
+set.seed(111)
+y <- rnorm(100,5,2)
+edf <- ecdf(y)
+plot(edf,main = "Empirical CDF")
+curve(pnorm(x,5,3),add = TRUE,col = "red")
+legend("topleft",legend = c("ECDF","N(5,2) CDF"),lty = 1, col = c("black","red"))
+```
+
+## Q-Q plot
+
+Let $G(\cdot)$ denotes the theoretical normal CDF  
+Q-Q plot plots the quantile function $\hat F_n^{-1}(x)$ versus $G^{-1}(x)$
+
+```{r fig.height=3.5, fig.width=5}
+qqnorm(toluca.reg$residuals)
+qqline(toluca.reg$residuals)
+```
+
+## Independence
+
+* Time series plot of residual vs time order in which it was recorded
+* Sorted data may invalidate conclusion
+* Independence is graphically check if there is no discernible pattern
+
+```{r fig.height=3.5, fig.width=5}
+plot(rstandard(toluca.reg), type = "b", xlab = "Order",ylab = "Standardized residual",main = "Independence")
+abline(h=0)
+```
+
+## Homogeneity of variance
+
+* Plot of the standardized/studentized residuals versus the fitted values
+    - Constant variance: constant spread/distance of the residuals
+
+```{r fig.height=3.5, fig.width=5}
+plot(toluca.reg$fitted.values,rstandard(toluca.reg),xlab  ="fitted values", ylab = "standardized residuals")
+```
+
+## Linearity
+
+* Scatter plot: For good model fit, scatterplot indicate a linear trend.
+* Residual vs fitted: For good model fit, residuals should evenly spread on either side of the 0 line.
+
+```{r}
+par(mfrow = c(1,2))
+x <- rnorm(30,0,3)
+eps <- rnorm(30,0,2)
+y <- x^2+eps
+plot(x,y)
+fit <- lm(y~x)
+abline(fit,col="red")
+plot(fit$fitted.values, rstandard(fit),xlab  ="fitted values", ylab = "standardized residuals")
+abline(h=0)
+```
+
+* We may still fit a linear model by adding or transforming predictors to include higer polynomial terms. For example, $Y_i = \beta_0+\beta_1x^2+\epsilon_i$

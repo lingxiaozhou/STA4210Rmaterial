@@ -1,0 +1,42 @@
+---
+title: "Rexample2"
+author: "Lingxiao Zhou"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+# Copier example
+
+
+```{r}
+copier <- read.csv("https://raw.githubusercontent.com/lingxiaozhou/STA4210Rmaterial/main/data/copiers.csv",skip=1,header=TRUE)
+
+reg <- lm(Time~Copiers,data=copier)
+
+
+# CI on mean response when Copiers=8
+predict(reg,newdata=data.frame(Copiers=8),se.fit=TRUE,interval="confidence")
+
+# PI on predicted value when Copiers=8
+predict(reg,newdata=data.frame(Copiers=8),interval="prediction")
+
+
+# Working-Hotelling Confidence band
+CI <- predict(reg,se.fit=TRUE)
+W <- sqrt(2*qf(0.95,length(reg$coefficients),reg$df.residual))  
+Band <- cbind( CI$fit - W * CI$se.fit, CI$fit + W * CI$se.fit )
+
+ # generate scatter plot
+plot(copier$Copiers, copier$Time) 
+# add the regression line
+abline(reg)  
+# use index to make sure Copiers is in the increasing order
+index <- order(copier$Copiers)   
+points(copier$Copiers[index], Band[index,1], type="l", lty=2)
+points(copier$Copiers[index], Band[index,2], type="l", lty=2)
+legend("topleft",legend=c("Mean Line","95% CB"),col=c(1,1),lty=c(1,2),bg="gray90")
+```
+

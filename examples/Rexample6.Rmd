@@ -1,0 +1,167 @@
+---
+title: "Rexample"
+author: "Lingxiao Zhou"
+date: "2024-09-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning = FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+
+
+# Bollywood Box Office Data
+
+* Movie Budgets (X)
+* Box Office Grosses (Y)
+
+```{r fig.height=3, fig.width=7}
+library(car) # for significance tests
+bbo <- read.csv("https://raw.githubusercontent.com/lingxiaozhou/STA4210Rmaterial/main/data/bollywood_boxoffice.csv",
+header=T)
+attach(bbo)
+names(bbo)
+bbo.reg1 <- lm(Gross ~ Budget)
+summary(bbo.reg1)
+e1 <- residuals(bbo.reg1)
+yhat1 <- predict(bbo.reg1)
+
+par(mfrow=c(1,2))
+
+# Residual vs. fitted
+plot(yhat1,e1,main="Residuals vs Fitted Values", xlab="Fitted Values",
+ylab="Residuals")
+abline(h=0)
+
+# QQ plot
+qqnorm(e1)
+qqline(e1)
+
+
+shapiro.test(e1) # Shapiro-Wilk
+ncvTest(bbo.reg1) # Breusch-Pagan
+```
+
+* Diagnostic plots and the significance tests indicate that there are violations to normality and constant variance assumption.
+
+
+## Log transformation of Y
+
+```{r fig.height=3, fig.width=9}
+bbo.reg2 <- lm(log(Gross) ~ Budget)
+summary(bbo.reg2)
+e2 <- residuals(bbo.reg2)
+yhat2 <- predict(bbo.reg2)
+
+par(mfrow=c(1,3))
+
+# Scatter plot
+plot(Budget, log(Gross))
+abline(bbo.reg2)
+
+# Residual vs. fitted
+plot(yhat2,e2,main="Residuals vs Fitted Values", xlab="Fitted Values",
+ylab="Residuals")
+abline(h=0)
+
+# QQ plot
+qqnorm(e2); qqline(e2)
+
+shapiro.test(e2) # Shapiro-Wilk
+ncvTest(bbo.reg2) # Breusch-Pagan
+```
+
+* Based on the Shapiro-Wilk test (Normality) and the Breusch-Pagan test (Constant Variance), the new model appears to be better. However, the linearity assumption is violated based on the residuals vs. fitted plot.
+
+
+## Log transformation of x and Y
+
+```{r fig.height=3, fig.width=9}
+bbo.reg3 <- lm(log(Gross) ~ log(Budget))
+summary(bbo.reg3)
+e3 <- residuals(bbo.reg3)
+yhat3 <- predict(bbo.reg3)
+par(mfrow=c(1,3))
+
+# Scatter plot
+plot(log(Budget), log(Gross))
+abline(bbo.reg3)
+
+# Residual vs. fitted
+plot(yhat3,e3,main="Residuals vs Fitted Values", xlab="Fitted Values",
+ylab="Residuals")
+abline(h=0)
+
+# QQ plot
+qqnorm(e3); qqline(e3)
+
+shapiro.test(e3) # Shapiro-Wilk
+ncvTest(bbo.reg3) # Breusch-Pagan
+```
+
+
+
+
+## Box-Cox transformation
+
+* $W = \begin{cases}\frac{Y^\lambda-1}{\lambda} & \lambda\neq 0\\\ln(Y) & \lambda=0\end{cases}$
+
+```{r fig.height=3, fig.width=3}
+library(MASS) # for boxcox
+bbo.reg4 <- lm(Gross ~ Budget)
+bc <- boxcox(bbo.reg4,plotit=T)
+lambda <- bc$x[which.max(bc$y)]
+lambda
+
+
+#fit new linear regression model using the Box-Cox transformation
+bbo.reg.bc <- lm(((Gross^lambda-1)/lambda) ~ Budget)
+```
+
+* The optimal $\lambda$ is 0.22
+* The procedure chooses a “quarter root” transformation for Y. We will not pursue that here, as we have seen that log transformations of Y and X work quite well.
+
+
+
+# Lowess
+
+* Nonparametric method of obtaining a smooth plot of the regression relation between Y and X
+* Fits regression in small neighborhoods around points along the regression line on the X axis
+* Weights observations closer to the specific point higher than more distant points
+* Re-weights after fitting, putting lower weights on larger residuals (in absolute value)
+* Obtains fitted value for each point after “final” regression is fit
+* Model is plotted along with linear fit, and confidence bands, linear fit is good if lowess lies within bands
+
+
+```{r fig.height=4, fig.width=9}
+par(mfrow=c(1,2))
+
+
+# find relationship between lot size (X) and work hours (Y) 
+toluca=read.table("http://www.stat.ufl.edu/~rrandles/sta4210/Rclassnotes/data/textdatasets/KutnerData/Chapter%20%201%20Data%20Sets/CH01TA01.txt",
+                  col.names = c("lotsize", "workhrs"))
+plot(toluca$lotsize,toluca$workhrs, xlab = "lotsize", ylab = "workhrs")
+toluca.reg=lm(workhrs~lotsize,data=toluca)
+
+abline(toluca.reg,col="darkgreen")
+
+
+x_seq=seq(20,120,by=1)
+fitl=loess(workhrs~lotsize,span=0.5,data=toluca) # span controls the size of the neighborhood
+predl=predict(fitl,x_seq,se=TRUE)   # Get predicted y values for x_seq based on lowess model
+
+plot(toluca)
+lines(x_seq,predl$fit,lty=1,col="darkred")
+lines(x_seq,predl$fit-1.96*predl$se.fit, lty=2, col="blue", lwd=1)
+lines(x_seq,predl$fit+1.96*predl$se.fit, lty=2, col="blue", lwd=1)
+
+polygon(c(x_seq,rev(x_seq)),c(predl$fit+1.96*predl$se.fit,rev(predl$fit-1.96*predl$se.fit)),col="#00009933",border="NA")
+
+abline(toluca.reg,col="darkgreen")
+legend("bottomright",legend=c("Loess","95% CB","SLR"),
+       col=c("darkred","blue","darkgreen"),lty=c(1,2,1),bty="n")
+```
+
+
+

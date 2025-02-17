@@ -1,0 +1,140 @@
+---
+title: "Rexample5"
+author: "Lingxiao Zhou"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning = FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+```{r fig.height=3.2, fig.width=5}
+# find relationship between lot size (X) and work hours (Y) 
+toluca <- read.table("http://www.stat.ufl.edu/~rrandles/sta4210/Rclassnotes/data/textdatasets/KutnerData/Chapter%20%201%20Data%20Sets/CH01TA01.txt",
+                  col.names = c("lotsize", "workhrs"))
+plot(toluca$lotsize,toluca$workhrs,xlab = "Lot size", ylab = "Work hours")
+toluca.reg <- lm(workhrs~lotsize,data=toluca)
+summary(toluca.reg)
+abline(toluca.reg)
+```
+
+```{r}
+e <- toluca.reg$residuals # get the raw residuals
+```
+
+
+```{r echo=FALSE}
+### Checking model assumptions graphically
+par(mfrow=c(2,2))
+
+# Normality
+hist(e, main = "Histogram of residuals", xlab = "residual")
+qqnorm(e,datax=TRUE)
+qqline(e,datax=TRUE)
+
+# Independence
+plot(e,type="o",pch=22,xlab="Order",main="Independence", ylab = "residuals")
+abline(h=0)
+
+# Homogeneity of variance/Model Fit
+plot(e~fitted.values(toluca.reg),main="Homogeneity/Fit",xlab = "fitted values", ylab = "residuals")
+abline(h=0)
+```
+
+
+
+
+# Normality
+
+## Shapiro test
+
+* $H_0:$ The residuals are drawn from normal distribution
+* Since P-value > 0.05, we fail to reject the normal assumption at the significance level 0.05
+
+
+```{r}
+shapiro.test(e)
+```
+
+
+# Independence
+
+## runs test
+
+* $H_0:$ Independence
+* We fail to reject the null hypothesis since p-value is large. 
+* According to the plot, there are 11 runs out of maximum 25
+
+
+```{r fig.height=3.5, fig.width=6}
+par(mfrow=c(1,1))
+library(lawstat) # may need to install package
+runs.test(e,plot.it=TRUE)
+```
+
+## Durbin-Watson
+
+* Assume $\epsilon_i = \rho\epsilon_{i-1}+u_i$ where $u_i\stackrel{iid}{\sim}N(0,\sigma^2).$
+* $H_0:\rho = 0$
+* For two-sided test, $H_a:\rho\neq0$
+* Notice that `durbinWatsonTest()` and `dwtest()` use different method to calculate p-value, so you may observe that they did not give consistent results.
+* Here we fail to reject the $H_0$.
+
+```{r}
+set.seed(1234)
+
+library(car) # for durbinWatsonTest
+durbinWatsonTest(toluca.reg,alternative="two.sided")
+
+
+library(lmtest) # for dwtest
+dwtest(toluca.reg,alternative="two.sided")
+```
+
+
+# Homogeneity of Variance
+
+## Levene's test
+
+* Need categorical x
+* $H_0:\sigma^2_1 = \sigma_2^2=\dots=\sigma_t^2$  
+* Split the data into two groups depending on whether lot size is greater
+than 75 or not (half-way point).
+* With a p-value greater than 0.05 we fail to reject the null.
+
+```{r}
+ind <- I(toluca$lotsize>75) # convert lotsize to categorical variable
+temp <- cbind(toluca$lotsize,e,ind);temp  # print X, residual and converted X
+
+leveneTest(temp[,2],ind)
+```
+
+## Breusch-Pagan/Cook-Weisberg test
+
+* $H_0:$ The residuals are distributed with equal variance
+* Fail to reject the null since the p-value = 0.36491 > 0.05
+
+```{r}
+ncvTest(toluca.reg) # car library
+```
+
+# Linearity of regression
+
+## Lack of fit
+
+* $H_0: E(Y_i) = \beta_0+\beta_1X_i$
+* $H_a: E(Y_i) \neq \beta_0+\beta_1X_i$
+* P-value = 0.6893. We fail to reject the null hypothesis and there is no violation for the linearity assumption based on this test
+
+```{r}
+# check t<<n
+# If t is approximately equal to n, then the test is not applicable
+(t <- length(unique(toluca$lotsize)))
+(n <- nrow(toluca))
+
+Reduced <- toluca.reg # reduced model: SLR model
+Full <- lm(workhrs~0+as.factor(lotsize),data=toluca) # full model: use group mean
+summary(Full)
+anova(Reduced, Full) # get lack-of-fit test
+```
+

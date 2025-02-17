@@ -32,8 +32,8 @@ summary(toluca.reg)
 
 ## Perform the general linear test
 
-**Reduce Model:** $Y_i = \beta_0$  
-**Full Model:** $Y_i = \beta_0+\beta_1x_i$  
+**Reduce Model:** $E(Y_i) = \beta_0$  
+**Full Model:** $E(Y_i) = \beta_0+\beta_1X_i$  
 $H_0:$ Full model is not better than the reduced model (equivalently $\beta_1 = 0$)  
 $H_a:$ Full model is better than the reduced model (equivalently $\beta_1\neq 0$)
 

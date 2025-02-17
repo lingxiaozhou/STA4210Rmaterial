@@ -10,42 +10,6 @@ knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
 
 
 
-# Example for ANOVA (toluca)
-
-Data on lot size ($X$) and work hours ($Y$) was obtained from 25 recent runs of a manufacturing process.
-
-```{r fig.height=3.5, fig.width=5}
-# find relationship between lot size (X) and work hours (Y) 
-toluca=read.table("http://www.stat.ufl.edu/~rrandles/sta4210/Rclassnotes/data/textdatasets/KutnerData/Chapter%20%201%20Data%20Sets/CH01TA01.txt",
-                  col.names = c("lotsize", "workhrs"))
-plot(toluca$lotsize,toluca$workhrs, xlab = "lot size",ylab = "work hours")
-toluca.reg=lm(workhrs~lotsize,data=toluca)
-abline(toluca.reg)
-```
-
-```{r}
-anova(toluca.reg)
-summary(toluca.reg)
-```
-
-* Note note that the F-test and t-test for $\beta_1$ are equivalent and the p-values are the same.
-
-## Perform the general linear test
-
-**Reduce Model:** $Y_i = \beta_0$  
-**Full Model:** $Y_i = \beta_0+\beta_1x_i$  
-$H_0:$ Full model is not better than the reduced model (equivalently $\beta_1 = 0$)  
-$H_a:$ Full model is better than the reduced model (equivalently $\beta_1\neq 0$)
-
-```{r}
-Red <- lm(workhrs~1,data=toluca)
-Full <- toluca.reg
-
-anova(Red,Full)
-```
-
-* P-value is $4.449\times10^{-10}<0.05.$ We reject null hypothesis and conclude that the full model is significantly better than the reduced model.
-
 # Diagnostic on Predictor
 
 **Goal**: Identify any outlying values in predictor, $X$ that could affect the appropriateness of the linear model.
@@ -55,7 +19,12 @@ anova(Red,Full)
 * Outliers (Histogram and/or Boxplot)
 * Levels of predictor associated with the run order when experiment is run sequentially (Sequence/ Time Series Plot)
 
-```{r}
+```{r fig.height=3, fig.width=7}
+toluca <- read.table("http://www.stat.ufl.edu/~rrandles/sta4210/Rclassnotes/data/textdatasets/KutnerData/Chapter%20%201%20Data%20Sets/CH01TA01.txt",
+                  col.names = c("lotsize", "workhrs"))
+toluca.reg <- lm(workhrs~lotsize,data=toluca)
+
+
 par(mfrow = c(1,2))
 hist(toluca$lotsize,xlab = "lot size",main = "Histogram")
 boxplot(toluca$lotsize)
@@ -64,7 +33,7 @@ boxplot(toluca$lotsize)
 * Do not appear to be any outliers
 
 
-```{r fig.height=3.5, fig.width=5}
+```{r fig.height=3, fig.width=4.5}
 plot(toluca$lotsize,type = "b",xlab = "Run order", ylab = "Lot size", main = "Sequence Plot")
 ```
 
@@ -72,7 +41,7 @@ plot(toluca$lotsize,type = "b",xlab = "Run order", ylab = "Lot size", main = "Se
 
 
 
-
+---
 
 # Checking Model Assumptions Graphically
 
@@ -112,7 +81,7 @@ $$
 1 &\mathrm{if\  } x\ge 8
 \end{cases}
 $$
-```{r fig.height=3.5, fig.width=5}
+```{r fig.height=3, fig.width=4}
 sample_data <- c(1,3,7,8)
 edf <- ecdf(sample_data)
 
@@ -126,7 +95,7 @@ plot(edf, main = "Empirical CDF",
 
 **Example:** Generate 100 observations from a N(5,2) and plot the empirical CDF and overlay the theoretical CDF from N(5,2)
 
-```{r fig.height=3.5, fig.width=5}
+```{r fig.height=3.5, fig.width=4.5}
 set.seed(111)
 y <- rnorm(100,5,2)
 edf <- ecdf(y)
@@ -140,7 +109,7 @@ legend("topleft",legend = c("ECDF","N(5,2) CDF"),lty = 1, col = c("black","red")
 Let $G(\cdot)$ denotes the theoretical normal CDF  
 Q-Q plot plots the quantile function $\hat F_n^{-1}(x)$ versus $G^{-1}(x)$
 
-```{r fig.height=3.5, fig.width=5}
+```{r fig.height=3, fig.width=4}
 qqnorm(toluca.reg$residuals)
 qqline(toluca.reg$residuals)
 ```
@@ -151,7 +120,7 @@ qqline(toluca.reg$residuals)
 * Sorted data may invalidate conclusion
 * Independence is graphically check if there is no discernible pattern
 
-```{r fig.height=3.5, fig.width=5}
+```{r fig.height=3, fig.width=4}
 plot(rstandard(toluca.reg), type = "b", xlab = "Order",ylab = "Standardized residual",main = "Independence")
 abline(h=0)
 ```
@@ -165,7 +134,8 @@ abline(h=0)
     - Constant variance: the red line is roughly horizontal across the plot and the spread of the points are roughly equal at all fitted values
     
 
-```{r fig.height=3.5, fig.width=5}
+```{r fig.height=3, fig.width=8}
+par(mfrow = c(1,2))
 plot(toluca.reg$fitted.values,rstandard(toluca.reg),xlab  ="fitted values", ylab = "standardized residuals", main = "residual v.s fitted")
 
 # plot(toluca.reg) generate several diagnostic plot
@@ -178,7 +148,7 @@ plot(toluca.reg, which = 3)
 * Scatter plot: For good model fit, scatterplot indicate a linear trend.
 * Residual vs fitted: For good model fit, residuals should evenly spread on either side of the 0 line.
 
-```{r}
+```{r fig.height=3, fig.width=8}
 par(mfrow = c(1,2))
 
 # generate data from a nonlinear model y = x^2+epsilon

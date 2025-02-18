@@ -1,7 +1,6 @@
 ---
 title: "Rexample"
 author: "Lingxiao Zhou"
-date: "2024-09-23"
 output: pdf_document
 ---
 

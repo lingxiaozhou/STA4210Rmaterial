@@ -1,0 +1,228 @@
+---
+title: "Multiple Linear regression"
+author: "Lingxiao Zhou"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning = FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+# Model 
+
+An extension of simple regression with multiple predictors to better aid in the estimation and prediction of the response.  The goal is to determine the effects (if any) of each predictor, controlling for the others.
+
+
+\begin{itemize}
+\item $p$ denotes the number of parameters, i.e. $p-1$ predictors (In this class, we always include an intercept in the regression model unless explicitly stated otherwise)
+\item $(Y_i,X_{1,i},X_{2,i},\ldots X_{p-1,i})$ denotes the $p$ dimensional data points
+\end{itemize}
+
+$$
+Y_i=\beta_0+\beta_1 X_{1,i}+\cdots+\beta_{p-1} X_{p-1,i}+\epsilon_i  \Leftrightarrow Y_i=\sum_{k=0}^{p}\beta_kX_{k,i}+\epsilon_i\quad X_{0,i}\equiv 1
+$$
+
+where $\epsilon_i\stackrel{iid}{\sim} N(0,\sigma^2)$
+
+# Polynomial term
+
+Useful for accounting for potential curvature/nonlinearity in the relationship between predictors and the response.
+
+
+* $X_{2,i}:=X_{1,i}^2$ a polynomial order 2 term
+* $X_{4,i}:=X_{1,i}X_{3,i}$ also a polynomial order 2 term,  known as an **interaction** term of $X_1$ with $X_3$.  Such terms are of particular usefulness when an interaction exists between two predictors, i.e. when the level/magnitude of one predictor has a relationship to the level/magnitude of the other
+
+
+**Example:**  
+Regression with 5 predictors but with only 2 unique predictors
+
+$$
+Y_i=\beta_0+\beta_1 X_{1,i}+\beta_2 X_{1,i}^2+\beta_3 X_{2,i}+\beta_4 X_{1,i}X_{2,i}+\beta_5 X_{1,i}^2X_{2,i} +\epsilon_i
+$$
+
+# Regression surface
+
+
+```{r echo=FALSE}
+# Load necessary libraries
+library(plotly)
+
+# Create a small dataset
+set.seed(123)
+n <- 50
+x1 <- runif(n, 0, 10)
+x2 <- runif(n, 0, 10)
+y <- 3 + 1.5 * x1 - 2 * x2 + rnorm(n, sd = 2) # Generate y with some random noise
+data <- data.frame(x1 = x1, x2 = x2, y = y)
+
+# Fit the multiple linear regression model
+model <- lm(y ~ x1 + x2, data = data)
+
+# Create a grid for x1 and x2 to predict y for the fitted surface
+x1_seq <- seq(min(data$x1), max(data$x1), length.out = 30)
+x2_seq <- seq(min(data$x2), max(data$x2), length.out = 30)
+grid <- expand.grid(x1 = x1_seq, x2 = x2_seq)
+grid$y <- predict(model, newdata = grid)
+
+# Convert the grid data into a matrix for plotting
+z_matrix <- matrix(grid$y, nrow = length(x1_seq), ncol = length(x2_seq), byrow = TRUE)
+
+# Create a 3D plot
+plot_ly() %>%
+  add_markers(data = data, x = ~x1, y = ~x2, z = ~y, color = ~y, colors = "viridis", size = 3, showlegend = FALSE) %>%
+  add_surface(x = ~x1_seq, y = ~x2_seq, z = ~z_matrix, opacity = 0.7, showscale = FALSE, showlegend = FALSE) %>%
+  layout(
+    title = "Fitted Surface",
+    scene = list(
+      xaxis = list(title = "X1"),
+      yaxis = list(title = "X2"),
+      zaxis = list(title = "Y")
+    )
+  )
+
+
+```
+
+
+
+# 1-unit increase
+
+In a model with polynomial/interaction terms special care needs to be taken as an increase in a predictor causes other changes too.
+
+
+
+For example
+$$
+E(Y|X_1,X_2)=\beta_0+\beta_1X_{1}+\beta_2X_{2}+\beta_3\underbrace{X_{1}X_{2}}_{X_3}
+$$
+
+\noindent where a 1-unit increase in $X_2$, i.e. $X_2+1$, leads to
+
+$$
+E(Y|X_1,X_2+1)=E(Y|X_1,X_2)+\beta_2+\beta_3X_{1}
+$$
+
+The effect of increasing $X_2$ by 1,  is dependent on the level of $X_1$.
+
+
+
+# Example (Flyash)
+
+* Using flyash \% as a strength (sten) factor in concrete compression test (PSI) for 28 day cured concrete
+
+
+```{r}
+dat=matrix(c(0, 4779,
+             0, 4706,
+             0, 4350,
+             20, 5189,
+             20, 5140,
+             20, 4976,
+             30, 5110,
+             30, 5685,
+             30, 5618,
+             40, 5995,
+             40, 5628,
+             40, 5897,
+             50, 5746,
+             50, 5719,
+             50, 5782,
+             60, 4895,
+             60, 5030,
+             60, 4648),
+           18,2,byrow=TRUE,dimnames=list(c(),c("flyash","strength")))
+
+plot(dat)
+dat=as.data.frame(dat)
+reg.lin=lm(strength~flyash,data=dat)
+summary(reg.lin)
+abline(reg.lin)
+
+#Add 2nd order polynomial
+flyash2=dat$flyash^2
+reg.2poly=lm(strength~flyash+flyash2,data=dat)
+summary(reg.2poly)
+curve(reg.2poly$coefficients[1]+reg.2poly$coefficients[2]*x+reg.2poly$coefficients[3]*x^2,from=0,to=60,col=2,add=TRUE)
+
+
+
+legend(0,6000,legend=c("1st order","2nd order"),lty=1,col=1:2,bg="light gray")
+```
+
+
+# Example (Safety)
+
+* Total of 40 companies are selected for the study. 
+* response is "lost hours"
+* predictor1 is "number of employess"
+* predictor2 is 1 for safety program, 0 otherwise
+
+\begin{align*}
+Y   &= \mbox{ lost work hours }\\
+X_1 &= \mbox{ number of employees }\\
+X_2 &= \begin{cases}
+        1 & \mbox{safety program used}\\
+        0 & \mbox{no safety program used}
+        \end{cases}
+\end{align*}
+
+## Include x1 and x2 in the model
+
+$$
+E(Y_i)=\beta_0+\beta_1 X_{1,i} + \beta_2 X_{2,i}
+$$
+
+implies
+
+$$
+E(Y_i)=\begin{cases}
+(\beta_0+\beta_2)+\beta_1 X_{1,i} & \mbox{ if }X_2=1\\
+\beta_0+\beta_1 X_{1,i} & \mbox{ if }X_2=0
+\end{cases}
+$$
+```{r}
+dat=read.csv("https://raw.githubusercontent.com/lingxiaozhou/STA4210Rmaterial/main/data/safe_reg.csv",header=TRUE)
+
+
+reg1=lm(y~x1+x2, data = dat)
+summary(reg1)
+coef1=coef(reg1)
+
+plot(dat$x1, dat$y, pch = dat$x2+1, col = dat$x2+1)
+abline(coef1["(Intercept)"], coef1["x1"],col = 1)
+abline(coef1["(Intercept)"] + coef1["x2"], coef1["x1"],col = 2)
+legend("bottomright", levels(x2), pch = 1:2, col = 1:2, title = "x2", legend = c(0,1))
+```
+
+
+
+
+# Include the interaction x1*x2 in the model
+
+$$
+E(Y_i)=\beta_0+\beta_1 X_{1,i} + \beta_2 X_{2,i} +\beta_3 (X_1 X_2)_i
+$$
+
+which implies
+
+$$
+E(Y_i)=\begin{cases}
+(\beta_0+\beta_2)+(\beta_1+\beta_3) X_{1,i} & \mbox{ if }X_2=1\\
+\beta_0+\beta_1 X_{1,i} & \mbox{ if }X_2=0
+\end{cases}
+$$
+
+
+```{r}
+reg2=lm(y~x1+x2+x1:x2,data = dat) #same as lm(y~x1+x2+x1*x2) or lm(y~x1*x2)
+summary(reg2)
+coef2=coef(reg2)
+
+plot(dat$x1, dat$y, pch = dat$x2+1, col = dat$x2+1)
+abline(coef2["(Intercept)"], coef2["x1"],col = 1)
+abline(coef2["(Intercept)"] + coef2["x2"], coef2["x1"]+coef2["x1:x2"],col = 2)
+legend("bottomright", levels(x2), pch = 1:2, col = 1:2, title = "x2", legend = c(0,1))
+```
+
+
+

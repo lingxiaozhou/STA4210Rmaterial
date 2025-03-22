@@ -1,0 +1,94 @@
+---
+title: "Rexample"
+author: "Lingxiao Zhou"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning = FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+# EX (Drug)
+
+* Response variable Y
+* Dosage level (d)
+* Drug product with levels: A, B, C
+    - reference level: A
+    - Dummy variables: P~B~, P~c~
+
+## Create the dataset
+
+```{r}
+Dose=rep(c(0.2,0.4,0.8,1.6),each=3)
+Product=rep(c("A","B","C"),4)
+y=c(2.0,1.8,1.3,4.3,4.1,2.0,6.5,4.9,2.8,8.9,5.7,3.4)
+ds=data.frame(Dose=(Dose),Product=factor(Product),Response=y)
+xtabs(Response~Dose+Product,data=ds)
+ds
+```
+
+## Fit multiple regression with interaction
+
+$Y = \beta_0+\beta_1d+\beta_2P_B+\beta_3P_C+\beta_4dP_B+\beta_5dP_C+\epsilon$
+
+```{r fig.height=3.5, fig.width=6}
+modelfull=lm(Response~Dose*Product,data=ds)
+summary(modelfull)
+library(car)
+scatterplot(Response~Dose|Product,smooth=FALSE,data=ds)
+```
+
+Notice that a log transformation on Dose may help fit a more linear relationship
+
+```{r fig.height=3.5, fig.width=6}
+ds=data.frame(logDose=log(Dose),Product=factor(Product),Response=y)
+# Full model
+modelfull=lm(Response~logDose*Product,data=ds)
+summary(modelfull)
+scatterplot(Response~logDose|Product,smooth=FALSE,data=ds)
+```
+
+## CI for coefficient
+
+Create at least 90\% simultaneous CI for $\beta_4$, $\beta_5$ and $\beta_4-\beta_5$ using **Bonferroni method**
+
+```{r}
+coefficients(modelfull)
+```
+
+* $b_4 = -1.50$
+* $b_5 = -2.28$
+* $b_4-b_5 = -3.78$
+* Critical value $t_{1-0.1/(2\cdot 3),n-p} = t_{1-0.1/6,6}$
+
+```{r}
+vmat=vcov(modelfull)
+round(vmat,3)
+```
+
+* $S_{b_4-b_5} = \sqrt{S^2_{b_4}+S^2_{b_5}-2S_{b_4b_5}}$
+* $S^2_{b_4}$ is the (5,5)th element in the matrix
+* $S^2_{b_5}$ is the (6,6)th element in the matrix
+* $S_{b_4b_5}$ is the (5,6)th element in the matrix
+
+
+### CI for beta4
+
+```{r}
+coefficients(modelfull)[5]+c(-1,1)*qt(1-0.10/6,6)*sqrt(vmat[5,5])
+```
+
+### CI for beta5
+
+```{r}
+coefficients(modelfull)[6]+c(-1,1)*qt(1-0.10/6,6)*sqrt(vmat[6,6])
+```
+
+
+### CI for beta4-beta5
+
+```{r}
+coefficients(modelfull)[5]-coefficients(modelfull)[6]+
+  c(-1,1)*qt(1-0.10/6,6)*sqrt(vmat[5,5]+vmat[6,6]-2*vmat[5,6])
+```
+

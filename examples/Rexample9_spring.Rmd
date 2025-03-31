@@ -1,0 +1,159 @@
+---
+title: "Rexample"
+author: "Lingxiao Zhou"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning = FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+
+# Bodyfat example
+
+## Load dataset
+
+```{r load data}
+dat=read.table("http://www.stat.ufl.edu/~rrandles/sta4210/Rclassnotes/data/textdatasets/KutnerData/Chapter%20%207%20Data%20Sets/CH07TA01.txt",
+               col.names=c("X1","X2","X3","Y"))
+```
+
+## Get sequential sum of sqaures
+
+* In R, we obtain SSR decomposed by sequential sums of squares which
+differ depending on the order the variables are entered.
+
+### X1, X2|X1, X3|X1,X2
+
+```{r}
+### Choosing model using sequential sums of squares 
+reg123=lm(Y~X1+X2+X3,data=dat)
+summary(reg123)
+anova(reg123)
+```
+* At least one predictor is significant (F-test)
+* No predictor is significant given other two (t-test)
+* The anova table shows SSR$(X_1)=352.27$, SSR$(X_2|X_1) = 33.17$ and , SSR$(X_3|X_1,X_2)=11.55$
+* predictor $X_1$ is significant if the other two predictors are not included in the model (p-value = 1.131e-06)
+* predictor $X_2$ is significant given $X_1$ (p-value = 0.03373)
+
+
+### X2, X1|X2, X3|X1,X2
+
+```{r}
+reg213=lm(Y~X2+X1+X3,data=dat)
+anova(reg213)
+```
+
+### X3, X2|X3, X1|X2,X3
+
+```{r}
+reg321=lm(Y~X3+X2+X1,data=dat)
+anova(reg321)
+```
+
+
+
+
+## General linear test
+
+### H~0~: $\beta_1=\beta_3=0$ (given $X_2$)
+
+* test whether we can remove X1 and X3 simultaneously
+* full: $Y  = \beta_0+\beta_1X_1+\beta_2X_2+\beta_3X_3+\epsilon$
+* reduced: $Y  = \beta_0+\beta_2X_2+\epsilon$
+
+```{r}
+reg2=update(reg123,.~.-X1-X3) # model with X2 only
+anova(reg2,reg123)
+```
+
+
+
+### H~0~: $\beta_2$=0 (given $X_1$, $X_3$)
+
+* test whether we can remove X2 (given other two predictors)
+* full: $Y  = \beta_0+\beta_1X_1+\beta_2X_2+\beta_3X_3+\epsilon$
+* reduced: $Y  = \beta_0+\beta_1X_1+\beta_3X_3+\epsilon$
+* Note the equivalence of F-test and t-test for testing $x_2$ given $X_1,X_3$
+
+```{r}
+reg13=update(reg123,.~.-X2)
+summary(reg13)
+anova(reg13,reg123)
+summary(reg123)
+```
+
+### H~0~: $\beta_1 = \beta_2 = \beta_3$
+
+* Full model: $Y = \beta_0+\beta_1X_1+\beta_2X_2+\beta_3X_3+\epsilon$
+* Reduced model: 
+$$
+\begin{aligned}
+Y = &\beta_0+\beta_1X_1+\beta_1X_2+\beta_1X_3+\epsilon\\
+  = &\beta_0+\beta_1(X_1+X_2+X_3)+\epsilon\\
+  = &\beta_0+\beta_1 Z+\epsilon
+\end{aligned}
+$$
+
+where $Z = X_1+X_2+X_3$
+
+* resulting F-test will be $F_{2,n-4}$
+
+```{r}
+dat$Z <- dat$X1+dat$X2+dat$X3
+regz <- lm(Y~Z,data = dat)
+anova(regz,reg123)
+```
+
+* Since p-value is small, we will reject the null hypothesis.
+
+
+
+
+---
+
+## Unstandardized regression
+
+```{r}
+library(car)  # for vif()
+
+reg13=lm(Y~X1+X3,data=dat)
+summary(reg13)
+sqrt(vif(reg13))  # compute the square root of VIF
+round(cor(dat[,1:4]),2)   # get the pairwise correlation between Y,X1,X2,X3
+```
+
+* For a model with only two predictors, the VIF for these predictors are always the same.
+* Standard error for the coefficient of $X_1$ variable is 1.125 times as large as it would be if $X_1$ were uncorrelated with $X_3$.
+* $X_1$ and $X_2$ are highly correlated (cor($X_1$,$X_2$) = 0.92)
+
+
+
+## Standardized regression
+
+```{r}
+
+# Define a function to compute the correlation transformation
+cor.trans=function(y){
+  n=length(y)
+  1/sqrt(n-1)*(y-mean(y))/sd(y)
+}
+
+dat_trans=as.data.frame(apply(dat[,1:4],2,cor.trans))  # obtain the transformed data
+reg13_trans=lm(Y~0+X1+X3,data=dat_trans)
+summary(reg13_trans)
+```
+
+* Note that the standard errors decrease in the standardized regression. 
+
+
+## Multicolinearity
+
+```{r}
+reg123=lm(Y~X1+X2+X3,data=dat)
+vif(reg123)
+summary(reg123)
+```
+
+* Standard errors are greatly inflated for the model with all three

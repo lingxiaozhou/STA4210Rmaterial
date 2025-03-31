@@ -1,0 +1,72 @@
+---
+title: "Rexample"
+author: "Lingxiao Zhou"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning = FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+# cruise dataset
+
+## load data
+
+```{r}
+cruise <- read.fwf("https://raw.githubusercontent.com/lingxiaozhou/STA4210Rmaterial/main/data/cruise_ship.dat.txt", width=c(20,20,rep(8,7)),
+                   col.names=c("ship", "cline", "age", "tonnage", "passengers", "length", "cabins", "passdens", "crew"))
+
+head(cruise)
+
+
+```
+
+## Fit Full model
+
+```{r}
+fit0 <- lm(crew ~ age + tonnage + passengers + length + cabins + passdens,data=cruise)
+summary(fit0)
+AIC(fit0)
+anova(fit0)
+
+```
+* Fit the linear regression model with all predictors
+* According to the summary results and anova table, some predictors are not significant
+
+## Perform all possible regressions (aka all subset regressions)
+
+
+```{r}
+
+# install.packages("leaps")
+library(leaps)
+allcruise <- regsubsets(crew ~ age + tonnage + passengers + length + cabins + passdens,nbest=4,data=cruise)
+aprout <- summary(allcruise)
+with(aprout,round(cbind(which,rsq,adjr2,cp,bic),3))     ## Prints "readable" results
+plot(allcruise,scale="adjr2")
+```
+
+
+* The first column gives the number of predictors (p-1), not the number of parameters (p).
+* The first row corresponds to the model with an intercept and cabins
+* nbest = 4 tells the program to print out the best 4 models for each possible number of parameters. 
+* The `with(aprout,round(cbind(which,rsq,adjr2,cp,bic),3))` command prints out the output in readable form, with 3 decimal places.
+* Based on adjusted $R^2$, the best model is the model with tonnage, passengers, length and cabins
+
+
+
+```{r}
+fit.new <- update(fit0,.~.-age-passdens)
+AIC(fit.new)
+
+# install.packages("olsrr")
+library(olsrr)
+
+press_value <- ols_press(fit.new)
+print(press_value)
+
+```
+
+
+
+
